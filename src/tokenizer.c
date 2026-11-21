@@ -5,8 +5,113 @@
 #include "tokenizer.h"
 
 /*
- * Converts all uppercase letters to lowercase and replaces any
- * non-alphanumeric character (punctuation, newlines, tabs) with a space.
+ * Loads stopwords from a text file (one word per line).
+ * Returns NULL if the file cannot be opened so the engine can still run safely.
+ */
+StopwordList* load_stopwords(const char* filepath) {
+    if (filepath == NULL) {
+        return NULL;
+    }
+
+    FILE* fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        return NULL;
+    }
+
+    StopwordList* list = malloc(sizeof(StopwordList));
+    if (list == NULL) {
+        fclose(fp);
+        return NULL;
+    }
+
+    int capacity = 64;
+    list->count = 0;
+    list->words = malloc((size_t)capacity * sizeof(char*));
+    if (list->words == NULL) {
+        free(list);
+        fclose(fp);
+        return NULL;
+    }
+
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        /* Normalize the line so whitespace/newlines become spaces */
+        normalize_text(buffer);
+
+        /* Trim leading and trailing spaces */
+        char* start = buffer;
+        while (*start == ' ') {
+            start++;
+        }
+        if (*start == '\0') {
+            continue; /* Skip blank lines */
+        }
+
+        char* end = start + strlen(start) - 1;
+        while (end > start && *end == ' ') {
+            *end = '\0';
+            end--;
+        }
+
+        /* Grow array dynamically if needed */
+        if (list->count >= capacity) {
+            capacity *= 2;
+            char** temp = realloc(list->words, (size_t)capacity * sizeof(char*));
+            if (temp == NULL) {
+                free_stopwords(list);
+                fclose(fp);
+                return NULL;
+            }
+            list->words = temp;
+        }
+
+        size_t len = strlen(start);
+        list->words[list->count] = malloc(len + 1);
+        if (list->words[list->count] == NULL) {
+            free_stopwords(list);
+            fclose(fp);
+            return NULL;
+        }
+        memcpy(list->words[list->count], start, len + 1);
+        list->count++;
+    }
+
+    fclose(fp);
+    return list;
+}
+
+/*
+ * Frees all stopword strings and the StopwordList container.
+ */
+void free_stopwords(StopwordList* list) {
+    if (list == NULL) {
+        return;
+    }
+    for (int i = 0; i < list->count; i++) {
+        free(list->words[i]);
+    }
+    free(list->words);
+    free(list);
+}
+
+/*
+ * Returns true if 'word' matches any entry in StopwordList.
+ */
+bool is_stopword(const StopwordList* list, const char* word) {
+    if (list == NULL || word == NULL) {
+        return false;
+    }
+    for (int i = 0; i < list->count; i++) {
+        if (strcmp(list->words[i], word) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Modifies text in-place: converts uppercase to lowercase and replaces
+ * non-alphanumeric characters with spaces.
  */
 void normalize_text(char* text) {
     if (text == NULL) {
@@ -26,13 +131,9 @@ void normalize_text(char* text) {
 }
 
 /*
- * Splits a normalized string on whitespace into a dynamically allocated
- * array of strings. Ignores empty tokens caused by repeated spaces.
- * (Stopword filtering will be wired in during the next commit).
+ * Splits normalized text into valid tokens, filtering out stopwords.
  */
 char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* out_token_count) {
-    (void)stopwords; /* Silences unused-parameter compiler warning until next commit */
-
     if (out_token_count == NULL) {
         return NULL;
     }
@@ -51,17 +152,13 @@ char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* 
 
     char* cursor = normalized_text;
     while (*cursor != '\0') {
-        /* 1. Skip leading spaces */
         while (*cursor == ' ') {
             cursor++;
         }
-
-        /* If we hit the end after skipping spaces, stop */
         if (*cursor == '\0') {
             break;
         }
 
-        /* 2. Mark the start of the word and scan until the next space or '\0' */
         char* word_start = cursor;
         while (*cursor != ' ' && *cursor != '\0') {
             cursor++;
@@ -69,7 +166,16 @@ char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* 
 
         size_t word_len = (size_t)(cursor - word_start);
 
-        /* 3. Resize the token pointer array if full */
+        /* Temporarily null-terminate the word to check against stopwords */
+        char saved_char = *cursor;
+        *cursor = '\0';
+        bool skip = is_stopword(stopwords, word_start);
+        *cursor = saved_char;
+
+        if (skip) {
+            continue;
+        }
+
         if (count >= capacity) {
             capacity *= 2;
             char** temp = realloc(tokens, (size_t)capacity * sizeof(char*));
@@ -81,7 +187,6 @@ char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* 
             tokens = temp;
         }
 
-        /* 4. Allocate exact memory for this token (+1 for '\0') and copy it */
         tokens[count] = malloc(word_len + 1);
         if (tokens[count] == NULL) {
             free_tokens(tokens, count);
