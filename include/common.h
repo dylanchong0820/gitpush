@@ -25,12 +25,14 @@ typedef struct PostingNode {
     struct PostingNode* next;
 } PostingNode;
 
+
 /* Node in the hash table vocabulary */
 typedef struct TermNode {
     char* term;
     int doc_freq;
     PostingNode* postings;
-    struct TermNode* next; /* Collision chain pointer */
+    PostingNode* tail;      /* last posting, for O(1) append (owned by index.c) */
+    struct TermNode* next;  /* Collision chain pointer */
 } TermNode;
 
 /* Master Inverted Index structure */
