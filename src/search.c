@@ -63,7 +63,7 @@ static int partition_range(SearchResult*r, int lo, int hi){
         swap_result(&r[mid], &r[hi]);
     }
 
-    swap_results(&r[mid], &r[hi]);
+    swap_result(&r[mid], &r[hi]);
     pivot=r[hi];
 
     i=lo;
@@ -138,7 +138,7 @@ SearchResult* search_index(const InvertedIndex* idx, const StopwordList* stopwor
     }
     *out_result_count=0; 
 
-    if (idx==NULL || raw_query==NULL || top_k==NULL || (*idx).docs==NULL || (*idx).total_docs <=0){
+    if (idx==NULL || raw_query==NULL || top_k<=NULL || (*idx).docs==NULL || (*idx).total_docs <=0){
         return NULL;
     }
 
@@ -161,18 +161,18 @@ SearchResult* search_index(const InvertedIndex* idx, const StopwordList* stopwor
         goto cleanup;
     }
     for (i=0; i<token_count; i++){
-        if (tokens[i]!=NULL && tokens[i][0]!="\0"){
+        if (tokens[i]!=NULL && tokens[i][0]!='\0'){
             insert_unique_sorted(uniq, &uniq_count, tokens[i]);
         }
-        if (uniq_count==0){
-            goto cleanup;
-        }
+    }
+    if (uniq_count==0){
+        goto cleanup;
     }
 
     //accumulate indexedd by doc_id
     for (i=0; i<(*idx).total_docs;i++){
         if ((*idx).docs[i].doc_id>max_id){
-            (*idx).docs[i].doc_id;
+            max_id=(*idx).docs[i].doc_id;
         }
     }
     if (max_id<0){
@@ -209,26 +209,26 @@ SearchResult* search_index(const InvertedIndex* idx, const StopwordList* stopwor
     //collect matching doc
     for (i=0; i<slots; i++){
         if (matched[i]>0){
-            matched++;
+            match_count++;
         }
+    }
 
-        if (match_count==0){
-            goto cleanup;
-        }
+    if (match_count==0){
+        goto cleanup;
+    }
 
-        results=(SearchResult*)malloc((size_t)match_count*sizeof(SearchResult));
-        if (results==NULL){
-            goto cleanup;
-        }
-        {
-            int k=0;
-            for (i=0; i<slots; i++){
-                if (matched[i]>0){
-                    results[k].doc_id=i;
-                    results[k].score=scores[i];
-                    results[k].matched_terms_count=matched[i];
-                    k++;
-                }
+    results=(SearchResult*)malloc((size_t)match_count*sizeof(SearchResult));
+    if (results==NULL){
+        goto cleanup;
+    }
+    {
+        int k=0;
+        for (i=0; i<slots; i++){
+            if (matched[i]>0){
+                results[k].doc_id=i;
+                results[k].score=scores[i];
+                results[k].matched_terms_count=matched[i];
+                k++;
             }
         }
     }
