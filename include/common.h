@@ -7,6 +7,8 @@
 #define MAX_WORD_LEN 64
 #define HASH_TABLE_SIZE 4096
 
+/*Use the header files gang lesgo*/
+
 /* Metadata for a single loaded document */
 typedef struct {
     int doc_id;
