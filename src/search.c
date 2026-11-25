@@ -138,7 +138,7 @@ SearchResult* search_index(const InvertedIndex* idx, const StopwordList* stopwor
     }
     *out_result_count=0; 
 
-    if (idx==NULL || raw_query==NULL || top_k<=NULL || (*idx).docs==NULL || (*idx).total_docs <=0){
+    if (idx==NULL || raw_query==NULL || top_k<=0 || (*idx).docs==NULL || (*idx).total_docs <=0){
         return NULL;
     }
 
