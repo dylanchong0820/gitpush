@@ -4,10 +4,7 @@
 #include <ctype.h>
 #include "tokenizer.h"
 
-/*
- * Loads stopwords from a text file (one word per line).
- * Returns NULL if the file cannot be opened so the engine can still run safely.
- */
+
 StopwordList* load_stopwords(const char* filepath) {
     if (filepath == NULL) {
         return NULL;
@@ -35,16 +32,15 @@ StopwordList* load_stopwords(const char* filepath) {
 
     char buffer[256];
     while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        /* Normalize the line so whitespace/newlines become spaces */
+        
         normalize_text(buffer);
 
-        /* Trim leading and trailing spaces */
         char* start = buffer;
         while (*start == ' ') {
             start++;
         }
         if (*start == '\0') {
-            continue; /* Skip blank lines */
+            continue; 
         }
 
         char* end = start + strlen(start) - 1;
@@ -53,7 +49,7 @@ StopwordList* load_stopwords(const char* filepath) {
             end--;
         }
 
-        /* Grow array dynamically if needed */
+        
         if (list->count >= capacity) {
             capacity *= 2;
             char** temp = realloc(list->words, (size_t)capacity * sizeof(char*));
@@ -80,9 +76,7 @@ StopwordList* load_stopwords(const char* filepath) {
     return list;
 }
 
-/*
- * Frees all stopword strings and the StopwordList container.
- */
+
 void free_stopwords(StopwordList* list) {
     if (list == NULL) {
         return;
@@ -94,9 +88,7 @@ void free_stopwords(StopwordList* list) {
     free(list);
 }
 
-/*
- * Returns true if 'word' matches any entry in StopwordList.
- */
+
 bool is_stopword(const StopwordList* list, const char* word) {
     if (list == NULL || word == NULL) {
         return false;
@@ -109,10 +101,7 @@ bool is_stopword(const StopwordList* list, const char* word) {
     return false;
 }
 
-/*
- * Modifies text in-place: converts uppercase to lowercase and replaces
- * non-alphanumeric characters with spaces.
- */
+
 void normalize_text(char* text) {
     if (text == NULL) {
         return;
@@ -130,9 +119,7 @@ void normalize_text(char* text) {
     }
 }
 
-/*
- * Splits normalized text into valid tokens, filtering out stopwords.
- */
+
 char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* out_token_count) {
     if (out_token_count == NULL) {
         return NULL;
@@ -166,7 +153,7 @@ char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* 
 
         size_t word_len = (size_t)(cursor - word_start);
 
-        /* Temporarily null-terminate the word to check against stopwords */
+        
         char saved_char = *cursor;
         *cursor = '\0';
         bool skip = is_stopword(stopwords, word_start);
@@ -202,9 +189,7 @@ char** tokenize_text(char* normalized_text, const StopwordList* stopwords, int* 
     return tokens;
 }
 
-/*
- * Frees every individual token string, then frees the outer pointer array.
- */
+
 void free_tokens(char** tokens, int token_count) {
     if (tokens == NULL) {
         return;
